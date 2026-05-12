@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+smartdoc.db
+uploads/
+
+# Node
+node_modules/
+dist/
+.DS_Store
+
+# Vite
+frontend/dist/
+# Large files / uploads
+backend/uploads/*
+*.zip
+*.pdf
+*.db
+
+type .gitignore
