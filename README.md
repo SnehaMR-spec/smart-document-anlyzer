@@ -25,3 +25,7 @@ openpyxl
 # Image Processing & OCR
 pytesseract
 Pillow
+
+#to run 
+backend - uvicorn main:app --reload
+frontend - npm run dev 
