@@ -1,52 +1,67 @@
 import { useState } from "react";
 import { useAuth } from "./AuthContext";
+import { API_URL } from "./api";
 
-const API = "http://localhost:8000";
+const API = API_URL ;
 
-export default function AuthPage({ onSuccess }) {
+export default function AuthPage() {
   const { login } = useAuth();
   const [mode, setMode]     = useState("login"); // "login" | "register"
   const [form, setForm]     = useState({ name: "", email: "", password: "" });
   const [error, setError]   = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]     = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handle = async () => {
-    setError("");
-    setLoading(true);
+  const handleRegister = async () => {
+    setError(""); setLoading(true);
     try {
-      const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
-      const body = mode === "login"
-        ? { email: form.email, password: form.password }
-        : { name: form.name, email: form.email, password: form.password };
-
-      const res  = await fetch(`${API}${endpoint}`, {
+      const res = await fetch(`${API}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          name:     form.name,
+          email:    form.email,
+          password: form.password,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Something went wrong");
+      if (!res.ok) throw new Error(data.detail || "Registration failed");
       login(data.user, data.token);
-      onSuccess?.();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleLogin = async () => {
+    setError(""); setLoading(true);
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email, password: form.password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Login failed");
+      login(data.user, data.token);
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); }
   };
 
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="logo-mark">⬡</div>
+        <div className="logo">⬡</div>
         <h1>Smart Doc Analyzer</h1>
         <p className="subtitle">
           {mode === "login" ? "Sign in to your account" : "Create a new account"}
         </p>
 
         <div className="auth-tabs">
-          <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Sign In</button>
-          <button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")}>Register</button>
+          <button className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(""); }}>
+            Sign In
+          </button>
+          <button className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(""); }}>
+            Register
+          </button>
         </div>
 
         <div className="auth-form">
@@ -57,23 +72,43 @@ export default function AuthPage({ onSuccess }) {
               onChange={e => setForm({ ...form, name: e.target.value })}
             />
           )}
+
           <input
             placeholder="Email address"
             type="email"
             value={form.email}
             onChange={e => setForm({ ...form, email: e.target.value })}
           />
-          <input
-            placeholder="Password"
-            type="password"
-            value={form.password}
-            onChange={e => setForm({ ...form, password: e.target.value })}
-            onKeyDown={e => e.key === "Enter" && handle()}
-          />
+
+          <div style={{ position: "relative" }}>
+            <input
+              placeholder="Password"
+              type={showPassword ? "text" : "password"}
+              value={form.password}
+              onChange={e => setForm({ ...form, password: e.target.value })}
+              onKeyDown={e => e.key === "Enter" && (mode === "login" ? handleLogin() : handleRegister())}
+              style={{ width: "100%", paddingRight: "44px" }}
+            />
+            <button
+              onClick={() => setShowPassword(!showPassword)}
+              type="button"
+              style={{
+                position: "absolute", right: "12px", top: "50%",
+                transform: "translateY(-50%)", background: "none",
+                border: "none", cursor: "pointer", color: "#64748b", fontSize: "16px",
+              }}
+            >
+              {showPassword ? "🙈" : "👁️"}
+            </button>
+          </div>
 
           {error && <div className="auth-error">⚠️ {error}</div>}
 
-          <button className="auth-btn" onClick={handle} disabled={loading}>
+          <button
+            className="auth-btn"
+            onClick={mode === "login" ? handleLogin : handleRegister}
+            disabled={loading}
+          >
             {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
           </button>
         </div>
@@ -94,12 +129,12 @@ export default function AuthPage({ onSuccess }) {
           border-radius: 20px;
           padding: 48px 40px;
           width: 100%;
-          max-width: 400px;
+          max-width: 420px;
           text-align: center;
         }
-        .logo-mark { font-size: 40px; color: #6ee7b7; margin-bottom: 12px; }
+        .logo { font-size: 40px; color: #6ee7b7; margin-bottom: 12px; }
         h1 { font-size: 24px; font-weight: 700; color: #f1f5f9; margin-bottom: 6px; }
-        .subtitle { color: #64748b; font-size: 14px; margin-bottom: 28px; }
+        .subtitle { color: #64748b; font-size: 14px; margin-bottom: 24px; }
         .auth-tabs {
           display: flex;
           background: #0f1117;
@@ -130,6 +165,8 @@ export default function AuthPage({ onSuccess }) {
           font-size: 14px;
           outline: none;
           transition: border-color 0.2s;
+          width: 100%;
+          box-sizing: border-box;
         }
         .auth-form input:focus { border-color: #6ee7b750; }
         .auth-form input::placeholder { color: #475569; }

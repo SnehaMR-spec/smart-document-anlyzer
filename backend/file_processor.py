@@ -4,13 +4,22 @@ import base64
 import httpx
 from pathlib import Path
 from dotenv import load_dotenv
+from fastapi import HTTPException
 
 load_dotenv()
 
-GROQ_URL  = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_KEY  = lambda: os.getenv("GROQ_API_KEY")
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_KEY = lambda: os.getenv("GROQ_API_KEY")
 
-# ---------- helpers ----------------------------------------------------------
+# Set Tesseract path for Windows
+try:
+    import pytesseract
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+except Exception:
+    pass
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _groq_vision(image_bytes: bytes, media_type: str) -> str:
     """Send image to Groq vision model and get description + extracted text."""
@@ -41,15 +50,18 @@ def _groq_vision(image_bytes: bytes, media_type: str) -> str:
         ],
         "max_tokens": 2048,
     }
-    headers = {"Authorization": f"Bearer {GROQ_KEY()}", "Content-Type": "application/json"}
-    resp = httpx.post(GROQ_URL, headers=headers, json=payload, timeout=120)
+    headers = {
+        "Authorization": f"Bearer {GROQ_KEY()}",
+        "Content-Type": "application/json",
+    }
+    resp = httpx.post(GROQ_URL, headers=headers, json=payload, timeout=60)
     if resp.status_code != 200:
         raise RuntimeError(f"Groq vision error {resp.status_code}: {resp.text}")
     return resp.json()["choices"][0]["message"]["content"]
 
 
 def _ocr_fallback(image_bytes: bytes) -> str:
-    """Try Tesseract OCR as a fallback (no internet needed)."""
+    """Try Tesseract OCR as a fallback."""
     try:
         import pytesseract
         from PIL import Image
@@ -59,12 +71,11 @@ def _ocr_fallback(image_bytes: bytes) -> str:
         return ""
 
 
-# ---------- main entry -------------------------------------------------------
+# ── Main Entry ────────────────────────────────────────────────────────────────
 
-def process_document(file_path: str, file_bytes: bytes | None = None) -> dict:
+def process_document(file_path: str, file_bytes: bytes = None) -> dict:
     """
     Returns {"text": str, "image_description": str | None}
-    image_description is set only for image files.
     """
     ext = Path(file_path).suffix.lower()
     raw = file_bytes or open(file_path, "rb").read()
@@ -73,14 +84,39 @@ def process_document(file_path: str, file_bytes: bytes | None = None) -> dict:
     if ext == ".pdf":
         try:
             import pdfplumber
+
             parts = []
             with pdfplumber.open(io.BytesIO(raw)) as pdf:
-                pages = pdf.pages[:50]
-                for page in pdf.pages:
+                for page in pdf.pages[:30]:  # limit to 30 pages for speed
+                    # Try normal text extraction first
                     t = page.extract_text()
-                    if t:
+                    if t and t.strip():
                         parts.append(t)
-            return {"text": "\n".join(parts), "image_description": None}
+                    else:
+                        # Page is scanned — try OCR
+                        try:
+                            import pytesseract
+                            img = page.to_image(resolution=200).original
+                            ocr_text = pytesseract.image_to_string(img)
+                            if ocr_text.strip():
+                                parts.append(ocr_text)
+                        except Exception:
+                            pass  # skip scanned page silently if tesseract unavailable
+
+            text = "\n".join(parts)
+
+            if not text.strip():
+                raise HTTPException(
+                    422,
+                    "This PDF appears to be scanned and has no extractable text. "
+                    "Install Tesseract OCR from https://github.com/UB-Mannheim/tesseract/wiki "
+                    "to enable scanned PDF support."
+                )
+
+            return {"text": text, "image_description": None}
+
+        except HTTPException:
+            raise
         except ImportError:
             raise RuntimeError("Install pdfplumber: pip install pdfplumber")
 
@@ -89,18 +125,19 @@ def process_document(file_path: str, file_bytes: bytes | None = None) -> dict:
         try:
             from docx import Document
             doc = Document(io.BytesIO(raw))
-            return {
-                "text": "\n".join(p.text for p in doc.paragraphs if p.text.strip()),
-                "image_description": None,
-            }
+            text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+            return {"text": text, "image_description": None}
         except ImportError:
             raise RuntimeError("Install python-docx: pip install python-docx")
 
-    # ── TXT / MD ─────────────────────────────────────────────────────────────
+    # ── TXT / MD ──────────────────────────────────────────────────────────────
     elif ext in (".txt", ".md"):
-        return {"text": raw.decode("utf-8", errors="replace"), "image_description": None}
+        return {
+            "text": raw.decode("utf-8", errors="replace"),
+            "image_description": None,
+        }
 
-    # ── CSV ──────────────────────────────────────────────────────────────────
+    # ── CSV ───────────────────────────────────────────────────────────────────
     elif ext == ".csv":
         try:
             import pandas as pd
@@ -121,25 +158,31 @@ def process_document(file_path: str, file_bytes: bytes | None = None) -> dict:
     # ── Images ────────────────────────────────────────────────────────────────
     elif ext in (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tiff", ".tif"):
         mime_map = {
-            ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-            ".png": "image/png",  ".webp": "image/webp",
-            ".gif": "image/gif",  ".bmp": "image/bmp",
-            ".tiff": "image/tiff", ".tif": "image/tiff",
+            ".jpg":  "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png":  "image/png",
+            ".webp": "image/webp",
+            ".gif":  "image/gif",
+            ".bmp":  "image/bmp",
+            ".tiff": "image/tiff",
+            ".tif":  "image/tiff",
         }
         media_type = mime_map.get(ext, "image/jpeg")
 
-        # Try AI vision first
+        # Try Groq vision first (AI description + OCR)
         try:
             vision_result = _groq_vision(raw, media_type)
-            # Parse the two sections
-            ocr_text = ""
+            ocr_text    = ""
             description = vision_result
+
             if "EXTRACTED TEXT:" in vision_result and "IMAGE DESCRIPTION:" in vision_result:
-                parts = vision_result.split("IMAGE DESCRIPTION:")
+                parts       = vision_result.split("IMAGE DESCRIPTION:")
                 ocr_text    = parts[0].replace("EXTRACTED TEXT:", "").strip()
                 description = parts[1].strip()
+
             combined_text = f"{ocr_text}\n\n[Image content: {description}]".strip()
             return {"text": combined_text, "image_description": description}
+
         except Exception:
             pass
 
@@ -151,4 +194,4 @@ def process_document(file_path: str, file_bytes: bytes | None = None) -> dict:
         }
 
     else:
-        raise ValueError(f"Unsupported file type: '{ext}'")
+        raise ValueError(f"Unsupported file type: '{ext}'. Supported: PDF, DOCX, TXT, CSV, XLSX, PNG, JPG, JPEG, WEBP, BMP, TIFF")

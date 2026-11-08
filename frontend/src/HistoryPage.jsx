@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
-
-const API = "http://localhost:8000";
+import { API_URL } from "./api";
+const API = API_URL ;
 
 export default function HistoryPage({ onOpen }) {
   const { token } = useAuth();

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { API_URL } from "../api";
  
 export default function Chat({ session }) {
   const [messages, setMessages] = useState([
@@ -26,7 +27,7 @@ export default function Chat({ session }) {
     try {
       const token = JSON.parse(localStorage.getItem("auth"))?.token;
 
-      const res = await fetch("http://localhost:8000/chat", {
+      const res = await fetch(`${API_URL}/chat`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { API_URL } from "../api";
  
 export default function Upload({ onSuccess }) {
   const [isDragging, setIsDragging] = useState(false);
@@ -17,7 +18,7 @@ export default function Upload({ onSuccess }) {
     try {
       const token = JSON.parse(localStorage.getItem("auth"))?.token;
 
-      const res = await fetch("http://localhost:8000/upload", {
+      const res = await fetch(`${API_URL}/upload`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

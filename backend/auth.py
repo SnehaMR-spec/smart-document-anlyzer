@@ -6,8 +6,12 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from database import get_db, User
+import os
+from dotenv import load_dotenv
 
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production-32chars")
+load_dotenv()
+
+SECRET_KEY = os.environ["SECRET_KEY"]
 ALGORITHM  = "HS256"
 TOKEN_EXPIRE_DAYS = 30
 

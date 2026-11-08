@@ -2,8 +2,9 @@ from sqlalchemy import create_engine, Column, String, DateTime, Text, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from datetime import datetime
 import uuid
-
-DATABASE_URL = "sqlite:///./smartdoc.db"
+import os
+os.makedirs("data", exist_ok=True)
+DATABASE_URL = "sqlite:///./data/smartdoc.db"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

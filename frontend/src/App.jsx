@@ -7,6 +7,7 @@ import Sidebar from "./components/Sidebar";
 import SummaryCard from "./components/SummaryCard";
 import DocumentPreview from "./components/DocumentPreview";
 import HistoryPage from "./HistoryPage";
+import { API_URL } from "./api";
 
 function AppInner() {
   const { user, token, logout, loading } = useAuth();
@@ -28,7 +29,7 @@ function AppInner() {
 
   const handleReset = () => {
     if (session) {
-      fetch(`http://localhost:8000/session/${session.session_id}`, {
+      fetch(`${API_URL}/session/${session.session_id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {});
@@ -43,7 +44,7 @@ function AppInner() {
     setIsSummarizing(true);
     setActiveTab("summary");
     try {
-      const res  = await fetch("http://localhost:8000/summarize", {
+      const res  = await fetch(`${API_URL}/summarize`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ session_id: session.session_id }),

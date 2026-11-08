@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL    = "llama-3.1-8b-instant"
+MODEL    = "openai/gpt-oss-120b"
 
 
 def _call_groq(prompt: str) -> str:
@@ -39,6 +39,6 @@ def ask_question(document_text: str, question: str, image_description: str | Non
     if image_description:
         context += f"\n\n[Image description: {image_description}]"
     return _call_groq(
-        f"Answer the question using only the document below. "
+        f"review the document provided completly understand the context and then answer the questions asked using the document uploaded "
         f"If the answer isn't there, say so.\n\nDocument:\n{context}\n\nQuestion: {question}\n\nAnswer:"
     )
