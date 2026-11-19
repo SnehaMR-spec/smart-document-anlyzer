@@ -1,0 +1,46 @@
+html { scroll-behavior: smooth; }
+
+.lp * { box-sizing: border-box; margin: 0; padding: 0; }
+.lp { background: #0b1020; color: #e2e8f0; font-family: 'DM Sans', 'Segoe UI', sans-serif; min-height: 100vh; }
+
+/* top bar */
+.lp-nav { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 5%; background: rgba(11, 16, 32, 0.85); backdrop-filter: blur(8px); border-bottom: 1px solid #1e2535; }
+.lp-logo { font-weight: 700; font-size: 18px; color: #6ee7b7; }
+.lp-links { display: flex; gap: 24px; }
+.lp-links a { color: #94a3b8; text-decoration: none; font-size: 14px; }
+.lp-links a:hover { color: #fff; }
+.lp-actions { display: flex; gap: 10px; }
+
+/* buttons */
+.lp-btn { padding: 10px 20px; border-radius: 8px; border: 1px solid #6ee7b7; background: transparent; color: #6ee7b7; cursor: pointer; font-size: 14px; font-weight: 600; }
+.lp-btn:hover { background: #6ee7b720; }
+.lp-btn.primary { background: #6ee7b7; color: #0b1020; }
+.lp-btn.primary:hover { background: #a7f3d0; }
+.lp-btn.big { padding: 14px 32px; font-size: 16px; }
+
+/* hero: big image with a dark layer on top so the text is readable */
+.lp-hero { min-height: 80vh; display: flex; align-items: center; padding: 80px 5%;
+  background-image: linear-gradient(rgba(11, 16, 32, 0.7), rgba(11, 16, 32, 0.95)),
+    url('https://images.unsplash.com/photo-1568667256549-094345857637?w=1920&q=80&auto=format&fit=crop');
+  background-size: cover; background-position: center; }
+.lp-hero-inner { max-width: 720px; }
+.lp-hero h1 { font-size: clamp(32px, 6vw, 56px); line-height: 1.1; margin-bottom: 16px; }
+.lp-hero p { font-size: clamp(16px, 2vw, 20px); color: #cbd5e1; margin-bottom: 28px; }
+
+/* sections and cards */
+.lp-section { max-width: 1200px; margin: 0 auto; padding: 72px 5%; }
+.lp-section h2 { text-align: center; font-size: clamp(24px, 4vw, 36px); margin-bottom: 40px; }
+.lp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+.lp-card { background: #161b27; border: 1px solid #1e2535; border-radius: 12px; padding: 24px; }
+.lp-card h3 { margin: 12px 0 8px; font-size: 18px; }
+.lp-card p { color: #94a3b8; font-size: 14px; line-height: 1.5; }
+.lp-icon { font-size: 28px; }
+.lp-num { width: 36px; height: 36px; border-radius: 50%; background: #6ee7b720; color: #6ee7b7; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+
+.lp-footer { text-align: center; padding: 32px; color: #475569; font-size: 13px; border-top: 1px solid #1e2535; }
+
+/* phones: hide the middle links so the top bar fits */
+@media (max-width: 700px) {
+  .lp-links { display: none; }
+  .lp-logo { font-size: 15px; }
+}

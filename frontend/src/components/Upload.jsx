@@ -82,7 +82,7 @@ export default function Upload({ onSuccess }) {
             { icon: "🔍", label: "RAG-powered Q&A" },
             { icon: "📋", label: "Auto summarization" },
             { icon: "👁️", label: "OCR for scanned docs" },
-            { icon: "⚡", label: "Gemini 1.5 Flash" },
+            { icon: "⚡", label: "Groq AI" },
           ].map((f) => (
             <div className="feature-chip" key={f.label}>
               {f.icon} {f.label}

@@ -35,7 +35,7 @@ export default function SummaryCard({ summary, isSummarizing, filename }) {
         {isSummarizing && (
           <div className="loading-state">
             <div className="pulse-ring" />
-            <p>Generating summary with Gemini...</p>
+            <p>Generating summary with AI...</p>
           </div>
         )}
  

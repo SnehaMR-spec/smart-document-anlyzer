@@ -8,17 +8,33 @@ import SummaryCard from "./components/SummaryCard";
 import DocumentPreview from "./components/DocumentPreview";
 import HistoryPage from "./HistoryPage";
 import { API_URL } from "./api";
+import Landing from "./components/Landing";
 
 function AppInner() {
   const { user, token, logout, loading } = useAuth();
   const [session, setSession]     = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
   const [summary, setSummary]     = useState(null);
   const [activeTab, setActiveTab] = useState("chat");
   const [view, setView]           = useState("home"); // "home" | "history"
   const [isSummarizing, setIsSummarizing] = useState(false);
 
   if (loading) return null;
-  if (!user)   return <AuthPage />;
+  if (!user) {
+  return showAuth ? (
+    <>
+      <button
+        onClick={() => setShowAuth(false)}
+        style={{ position: "fixed", top: 12, left: 12, zIndex: 20, background: "transparent", border: "1px solid #334155", padding: "6px 12px", fontSize: 13 }}
+      >
+        ← Back to home
+      </button>
+      <AuthPage />
+    </>
+  ) : (
+    <Landing onLogin={() => setShowAuth(true)} />
+  );
+}
 
   const handleUploadSuccess = (sessionData) => {
     setSession(sessionData);
@@ -67,7 +83,7 @@ function AppInner() {
               <div className="user-email">{user.email}</div>
             </div>
           </div>
-          <button className="logout-btn" onClick={logout} title="Logout">↩</button>
+          <button className="logout-btn" onClick={() => { logout(); setShowAuth(false); }} title="Logout">↩</button>
         </div>
 
         <div className="nav-links">
@@ -143,6 +159,13 @@ function AppInner() {
         .tab-btn { padding:8px 18px; border:none; background:transparent; color:#64748b; cursor:pointer; font-size:14px; font-weight:500; border-bottom:2px solid transparent; transition:all 0.2s; margin-bottom:-1px; }
         .tab-btn:hover { color:#94a3b8; }
         .tab-btn.active { color:#6ee7b7; border-bottom-color:#6ee7b7; }
+        @media (max-width: 768px) {
+          .app-shell { flex-direction: column; }
+          .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #1e2535; }
+          .nav-links { flex-direction: row; }
+          .main-content { overflow: visible; }
+          .workspace { height: auto; min-height: 80vh; }
+        }
       `}</style>
     </div>
   );
