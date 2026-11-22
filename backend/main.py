@@ -14,8 +14,17 @@ from summarizer import generate_summary, ask_question
 
 import logging
 logging.getLogger("pdfminer").setLevel(logging.ERROR)
+from contextlib import asynccontextmanager
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger("smart_doc")
 
-app = FastAPI(title="Smart Doc Analyzer", redirect_slashes=False, root_path="/api")
+ALLOWED_EXTENSIONS = {".pdf"}          # add others only if you want to support them
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024    # 10 MB
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+app = FastAPI(title="Smart Doc Analyzer", redirect_slashes=False, root_path="/api",  lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -80,6 +89,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email).first()
     if not user or not verify_password(req.password, user.password):
+        logger.warning("login failed for %s", req.email)
         raise HTTPException(401, "Invalid email or password")
     return {
         "token": create_token(user.id),
@@ -100,9 +110,18 @@ async def upload(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        logger.warning("upload rejected: unsupported type %s", ext)
+        raise HTTPException(415, "Only PDF files are supported.")
+
     raw = await file.read()
     if not raw:
         raise HTTPException(422, "Uploaded file is empty.")
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, "File too large (max 10 MB).")
+    if not raw.startswith(b"%PDF"):
+        raise HTTPException(400, "File content is not a valid PDF.")
 
     loop   = asyncio.get_event_loop()
     result = await loop.run_in_executor(executor, process_document, file.filename or "upload", raw)
@@ -128,6 +147,7 @@ async def upload(
     db.refresh(doc)
 
     active_sessions[doc.id] = {"text": text, "image_description": image_description}
+    logger.info("upload ok user=%s doc=%s words=%d", current_user.id, doc.id, len(text.split()))
 
     return {
         "session_id":        doc.id,
